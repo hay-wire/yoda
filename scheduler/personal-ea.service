@@ -1,0 +1,8 @@
+[Unit]
+Description=Personal EA - email ingestion + classification cycle
+
+[Service]
+Type=oneshot
+WorkingDirectory=/path/to/yoda
+EnvironmentFile=/path/to/yoda/.env
+ExecStart=/path/to/yoda/.venv/bin/python main.py

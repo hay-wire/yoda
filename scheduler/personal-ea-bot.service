@@ -1,0 +1,14 @@
+[Unit]
+Description=Personal EA - Telegram inbound bot (always on)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/path/to/yoda
+EnvironmentFile=/path/to/yoda/.env
+ExecStart=/path/to/yoda/.venv/bin/python bot_server.py
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
