@@ -12,10 +12,10 @@ from brain import claude_agent, gemini_client, local_client
 from config import PRIVACY_MODE
 
 
-def classify(company, channel, messages):
+def classify(company, channel, messages, persona=""):
     if PRIVACY_MODE == "local":
-        return local_client.classify_messages(company, channel, messages)
-    return claude_agent.classify_messages(company, channel, messages)
+        return local_client.classify_messages(company, channel, messages, persona=persona)
+    return claude_agent.classify_messages(company, channel, messages, persona=persona)
 
 
 def compose(prompt, structured_only=False):

@@ -13,17 +13,18 @@ import os
 
 import requests
 
-from brain.claude_agent import PROMPT_TEMPLATE, _extract_json_array, _format_messages
+from brain.claude_agent import PROMPT_TEMPLATE, _extract_json_array, _format_messages, _with_persona
 
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3.1")
 
 
-def classify_messages(company, channel, messages, timeout=120):
+def classify_messages(company, channel, messages, persona="", timeout=120):
     if not messages:
         return []
 
     prompt = PROMPT_TEMPLATE.format(company=company, channel=channel, messages=_format_messages(messages))
+    prompt = _with_persona(prompt, persona)
     response = requests.post(
         f"{OLLAMA_HOST}/api/generate",
         json={"model": OLLAMA_MODEL, "prompt": prompt, "stream": False},

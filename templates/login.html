@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Personal EA - Log in</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: system-ui, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+  form { display: flex; flex-direction: column; gap: 10px; width: 240px; }
+  input, button { font: inherit; padding: 8px; }
+</style>
+</head>
+<body>
+<form method="post">
+  <h2>Personal EA</h2>
+  {% if error %}<p style="color:#c0392b">{{ error }}</p>{% endif %}
+  <input type="password" name="password" placeholder="Password" autofocus>
+  <button type="submit">Log in</button>
+</form>
+</body>
+</html>

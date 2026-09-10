@@ -14,6 +14,7 @@ from db.database import (
     get_connection,
     get_item,
     get_open_items,
+    get_setting,
     init_db,
     insert_pipeline_item,
     list_companies,
@@ -92,13 +93,14 @@ async def draft(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     conn = get_connection(DB_PATH)
     item = get_item(conn, item_id)
+    persona = get_setting(conn, "persona_instructions", "") or ""
     conn.close()
     if not item:
         await update.message.reply_text(f"No item #{item_id}.")
         return
 
     try:
-        text = draft_reply(item)
+        text = draft_reply(item, persona=persona)
     except Exception as exc:
         await update.message.reply_text(f"Draft failed: {exc}")
         return

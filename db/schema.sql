@@ -27,3 +27,10 @@ CREATE TABLE IF NOT EXISTS companies (
     name TEXT PRIMARY KEY,
     email_account TEXT
 );
+
+-- Settings: small key/value store for web-UI-managed preferences that
+-- aren't credentials (those stay in .env) - e.g. personalization text.
+CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT
+);

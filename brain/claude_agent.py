@@ -42,7 +42,7 @@ Write only the draft reply text, 3-6 sentences, no subject line, no preamble.
 """
 
 
-def classify_messages(company, channel, messages, timeout=120):
+def classify_messages(company, channel, messages, persona="", timeout=120):
     """Raw content in -> Claude. Runs via `claude -p` so calls draw on the
     logged-in Pro/Max subscription rather than paid API billing."""
     if not messages:
@@ -50,11 +50,11 @@ def classify_messages(company, channel, messages, timeout=120):
 
     formatted = _format_messages(messages)
     prompt = CLASSIFY_PROMPT_TEMPLATE.format(company=company, channel=channel, messages=formatted)
-    output = _run_claude(prompt, timeout)
+    output = _run_claude(_with_persona(prompt, persona), timeout)
     return json.loads(_extract_json_array(output))
 
 
-def draft_reply(item, timeout=60):
+def draft_reply(item, persona="", timeout=60):
     """Phase 4: suggest a reply. Never sends anything - the caller (the
     Telegram /draft command) only ever returns this text for the user to
     copy and send themselves."""
@@ -64,7 +64,15 @@ def draft_reply(item, timeout=60):
         item=item.get("item", ""),
         next_action=item.get("next_action") or "not specified",
     )
-    return _run_claude(prompt, timeout)
+    return _run_claude(_with_persona(prompt, persona), timeout)
+
+
+def _with_persona(prompt, persona):
+    """Web-UI-managed personalization (tone, per-company priority rules,
+    signing preferences, ...), applied to classification and drafting."""
+    if not persona:
+        return prompt
+    return f"User preferences to apply throughout: {persona}\n\n{prompt}"
 
 
 def compose(prompt, timeout=60):

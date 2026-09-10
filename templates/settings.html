@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Settings - Personal EA{% endblock %}
+{% block content %}
+<h1>Settings</h1>
+{% if saved %}
+<p class="flash">Saved. main.py/stale_check.py/weekly_summary.py pick up changes on their next scheduled
+run. If you changed the Telegram bot token or this page's own password, restart bot_server.py / webui.py.</p>
+{% endif %}
+<form method="post">
+  <fieldset>
+    <legend>Telegram</legend>
+    <div class="row">
+      <label>Bot token <span class="muted">{{ 'currently set' if env.get('TELEGRAM_BOT_TOKEN') else 'not set' }}</span>
+        <input type="password" name="TELEGRAM_BOT_TOKEN" placeholder="leave blank to keep current">
+      </label>
+      <label>Chat id
+        <input name="TELEGRAM_CHAT_ID" value="{{ env.get('TELEGRAM_CHAT_ID', '') }}">
+      </label>
+    </div>
+  </fieldset>
+
+  {% for b in email_blocks %}
+  <fieldset>
+    <legend>Email account {{ b.n }}{% if b.n == 1 %} (Phase 1 - required){% else %} (Phase 2 - optional){% endif %}</legend>
+    <div class="row">
+      <label>Company<input name="EMAIL_{{ b.n }}_COMPANY" value="{{ b.company }}"></label>
+      <label>Channel label<input name="EMAIL_{{ b.n }}_CHANNEL" value="{{ b.channel }}"></label>
+    </div>
+    <div class="row">
+      <label>Account (email address)<input name="EMAIL_{{ b.n }}_ACCOUNT" value="{{ b.account }}"></label>
+      <label>App password <span class="muted">{{ 'currently set' if b.password_set else 'not set' }}</span>
+        <input type="password" name="EMAIL_{{ b.n }}_APP_PASSWORD" placeholder="leave blank to keep current"></label>
+      <label>IMAP host<input name="EMAIL_{{ b.n }}_IMAP_HOST" value="{{ b.imap_host }}"></label>
+    </div>
+  </fieldset>
+  {% endfor %}
+
+  <fieldset>
+    <legend>WhatsApp (Phase 2, read-only)</legend>
+    <div class="row">
+      <label style="flex-direction:row; align-items:center; gap:6px;">
+        <input type="checkbox" name="WHATSAPP_ENABLED" {% if env.get('WHATSAPP_ENABLED') == 'true' %}checked{% endif %}> Enabled
+      </label>
+    </div>
+    <div class="row">
+      <label>Company map (JSON: chat id substring -> company name)
+        <textarea name="WHATSAPP_COMPANY_MAP" rows="2">{{ env.get('WHATSAPP_COMPANY_MAP', '{}') }}</textarea>
+      </label>
+    </div>
+    <p class="muted">Run <code>node connectors/whatsapp_baileys.js 0</code> once manually to scan the QR code before enabling this.</p>
+  </fieldset>
+
+  <fieldset>
+    <legend>WhatsApp Business API (Phase 4, opt-in, not wired to anything automatically)</legend>
+    <div class="row">
+      <label>Access token <span class="muted">{{ 'currently set' if env.get('WHATSAPP_BUSINESS_TOKEN') else 'not set' }}</span>
+        <input type="password" name="WHATSAPP_BUSINESS_TOKEN" placeholder="leave blank to keep current"></label>
+      <label>Phone number id<input name="WHATSAPP_BUSINESS_PHONE_ID" value="{{ env.get('WHATSAPP_BUSINESS_PHONE_ID', '') }}"></label>
+    </div>
+    <p class="muted">See connectors/whatsapp_business.py - requires your own Meta Business Account setup.</p>
+  </fieldset>
+
+  <fieldset>
+    <legend>Gemini (Phase 2 router - digest/summary wording only, never raw content)</legend>
+    <div class="row">
+      <label>API key <span class="muted">{{ 'currently set' if env.get('GEMINI_API_KEY') else 'not set' }}</span>
+        <input type="password" name="GEMINI_API_KEY" placeholder="leave blank to keep current"></label>
+      <label>Model<input name="GEMINI_MODEL" value="{{ env.get('GEMINI_MODEL', 'gemini-2.0-flash') }}"></label>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Privacy mode (Phase 4)</legend>
+    <div class="row">
+      <label>Classification model
+        <select name="PRIVACY_MODE">
+          <option value="claude" {% if env.get('PRIVACY_MODE', 'claude') == 'claude' %}selected{% endif %}>Claude (default)</option>
+          <option value="local" {% if env.get('PRIVACY_MODE') == 'local' %}selected{% endif %}>Local (Ollama)</option>
+        </select>
+      </label>
+      <label>Ollama host<input name="OLLAMA_HOST" value="{{ env.get('OLLAMA_HOST', 'http://localhost:11434') }}"></label>
+      <label>Ollama model<input name="OLLAMA_MODEL" value="{{ env.get('OLLAMA_MODEL', 'llama3.1') }}"></label>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Stale detection (Phase 3)</legend>
+    <label>Days without movement before an item counts as stale
+      <input type="number" name="STALE_DAYS" min="1" value="{{ env.get('STALE_DAYS', '5') }}">
+    </label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Personalization</legend>
+    <label>Instructions applied when classifying new messages and when /draft writes a reply
+      <textarea name="persona_instructions" rows="4" placeholder="e.g. Treat anything from Kalastra as high urgency. Sign drafts as Prashant. Keep replies brief and direct.">{{ persona }}</textarea>
+    </label>
+    <p class="muted">Stored in the database, not .env - applies immediately on the next classification or /draft call.</p>
+  </fieldset>
+
+  <button type="submit">Save settings</button>
+</form>
+{% endblock %}

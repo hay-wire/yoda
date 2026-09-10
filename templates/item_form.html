@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit item' if item else 'New item' }} - Personal EA{% endblock %}
+{% block content %}
+<h1>{{ 'Edit item #' ~ item.id if item else 'New item' }}</h1>
+<form method="post">
+  <div class="row">
+    <label>Company
+      <input name="company" list="company-list" value="{{ item.company if item else '' }}" required>
+      <datalist id="company-list">
+        {% for c in companies %}<option value="{{ c.name }}">{% endfor %}
+      </datalist>
+    </label>
+    <label>Channel
+      <input name="channel" value="{{ item.channel if item else 'manual' }}">
+    </label>
+  </div>
+  <div class="row">
+    <label>Item
+      <textarea name="item" rows="2" required>{{ item.item if item else '' }}</textarea>
+    </label>
+  </div>
+  <div class="row">
+    <label>Stage
+      <select name="stage">
+        {% for s in stages %}
+        <option value="{{ s }}" {% if item and item.stage == s %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Due date
+      <input type="date" name="due_date" value="{{ item.due_date if item else '' }}">
+    </label>
+    <label>Urgency
+      <select name="urgency">
+        <option value="">-</option>
+        {% for u in urgencies %}
+        <option value="{{ u }}" {% if item and item.urgency == u %}selected{% endif %}>{{ u }}</option>
+        {% endfor %}
+      </select>
+    </label>
+  </div>
+  <div class="row">
+    <label>Next action
+      <input name="next_action" value="{{ item.next_action if item else '' }}">
+    </label>
+  </div>
+  <p><button type="submit">Save</button> <a href="{{ url_for('dashboard') }}">Cancel</a></p>
+</form>
+{% endblock %}

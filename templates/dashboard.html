@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Pipeline - Personal EA{% endblock %}
+{% block content %}
+<h1>Pipeline</h1>
+<form method="get" class="row">
+  <label>Company
+    <select name="company" onchange="this.form.submit()">
+      <option value="">All</option>
+      {% for c in companies %}
+      <option value="{{ c.name }}" {% if c.name == company_filter %}selected{% endif %}>{{ c.name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+</form>
+<p><a href="{{ url_for('new_item') }}">+ Add item</a></p>
+<table>
+<tr><th>#</th><th>Company</th><th>Item</th><th>Stage</th><th>Due</th><th>Urgency</th><th>Last touched</th><th>Actions</th></tr>
+{% for item in items %}
+<tr class="{{ 'stale' if item.id in stale_ids else '' }}">
+  <td>{{ item.id }}</td>
+  <td>{{ item.company }}</td>
+  <td>{{ item.item }}{% if item.id in stale_ids %} <span class="badge">stale</span>{% endif %}</td>
+  <td>{{ item.stage or 'new' }}</td>
+  <td>{{ item.due_date or '' }}</td>
+  <td>{{ item.urgency or '' }}</td>
+  <td>{{ item.last_touched }}</td>
+  <td class="actions">
+    <a href="{{ url_for('edit_item', item_id=item.id) }}">edit</a>
+    <form class="inline" method="post" action="{{ url_for('item_done', item_id=item.id) }}"><button>done</button></form>
+    <form class="inline" method="post" action="{{ url_for('item_snooze', item_id=item.id) }}">
+      <input type="date" name="due_date" required><button>snooze</button>
+    </form>
+    <form class="inline" method="post" action="{{ url_for('item_delete', item_id=item.id) }}" onsubmit="return confirm('Delete this item?')"><button>delete</button></form>
+  </td>
+</tr>
+{% else %}
+<tr><td colspan="8">Nothing open.</td></tr>
+{% endfor %}
+</table>
+{% endblock %}

@@ -11,6 +11,7 @@ stores them in SQLite, and reaches you via Telegram. Built per
 | 2 | Remaining email accounts, WhatsApp (Baileys, read-only), Gemini router for wording | Built |
 | 3 | Stale-item alerts, weekly per-company summaries, `/done` and `/snooze` | Built |
 | 4 | `/draft` reply suggestions, WhatsApp Business API (opt-in), local-model privacy mode | Built, two are opt-in scaffolding — see below |
+| — | Web UI: pipeline dashboard, company mapping, all `.env` settings, personalization | Built (not in the original guide) |
 
 Two Phase 4 pieces are code you can turn on, not things that can be proven
 working from here: **WhatsApp Business API sending** needs a Meta Business
@@ -142,6 +143,43 @@ nothing leaves the machine, at the cost of classification quality. Requires
 [Ollama](https://ollama.com) running locally with a model pulled, e.g.
 `ollama pull llama3.1`. `OLLAMA_HOST` / `OLLAMA_MODEL` are configurable.
 
+## Web UI
+
+`python webui.py` starts a local dashboard at `http://127.0.0.1:5000` (or
+whatever `WEBUI_HOST`/`WEBUI_PORT` say). Set a real random `WEBUI_SECRET` in
+`.env` first — the page is gated behind it, since it can display and edit
+email app passwords, the Telegram bot token, and API keys. Keep
+`WEBUI_HOST=127.0.0.1`; there's no per-user auth here, just one shared
+password, so it isn't meant to be reachable beyond your own machine.
+
+What it does:
+
+- **Pipeline** (`/`) — every open item, filterable by company, with the
+  same `#id` shown in Telegram; edit any field, mark done, snooze, or
+  delete, plus a form to add items by hand.
+- **Companies** (`/companies`) — the same table Telegram's `add followup:`
+  matches against; add or remove mappings here instead of only via SQL.
+- **Settings** (`/settings`) — every `.env` value from a browser instead of
+  hand-editing the file: Telegram, all three email slots, WhatsApp
+  enable/mapping, the WhatsApp Business and Gemini keys, privacy mode, and
+  stale-days. Secret fields (tokens, passwords, API keys) show only whether
+  something is currently set and are left untouched unless you type a new
+  value — the form never displays or round-trips the actual secret.
+  Changes land in `.env` directly (via `python-dotenv`), so `main.py` /
+  `stale_check.py` / `weekly_summary.py` pick them up on their next
+  scheduled run with no restart needed; `bot_server.py` and `webui.py`
+  itself only need a restart if you change *their own* credentials
+  (the Telegram token, or `WEBUI_SECRET`).
+- **Personalization**, also on the settings page — free-text instructions
+  (e.g. "treat anything from Kalastra as high urgency", "sign drafts as
+  Prashant") stored in the database and prepended to every classification
+  and `/draft` prompt. This is the "personalise the executive" control —
+  it changes how items get judged and how replies get worded, not just
+  how the dashboard looks.
+
+Run it as its own always-on process alongside `bot_server.py` — see
+`scheduler/personal-ea-webui.service` below.
+
 ## Scheduling (Linux / systemd)
 
 Edit the paths in `scheduler/*.service`, then:
@@ -150,12 +188,13 @@ Edit the paths in `scheduler/*.service`, then:
 cp scheduler/personal-ea.service scheduler/personal-ea.timer /etc/systemd/system/
 cp scheduler/personal-ea-stale.service scheduler/personal-ea-stale.timer /etc/systemd/system/
 cp scheduler/personal-ea-weekly.service scheduler/personal-ea-weekly.timer /etc/systemd/system/
-cp scheduler/personal-ea-bot.service /etc/systemd/system/
+cp scheduler/personal-ea-bot.service scheduler/personal-ea-webui.service /etc/systemd/system/
 
 systemctl enable --now personal-ea.timer          # periodic email/WhatsApp cycle
 systemctl enable --now personal-ea-stale.timer    # daily stale check
 systemctl enable --now personal-ea-weekly.timer   # weekly summary
 systemctl enable --now personal-ea-bot.service    # always-on Telegram inbound
+systemctl enable --now personal-ea-webui.service  # always-on web UI (127.0.0.1 only)
 ```
 
 On macOS use `launchd` agents with the same split (periodic jobs for

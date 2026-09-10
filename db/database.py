@@ -118,6 +118,43 @@ def snooze_item(conn, item_id, new_due_date):
     return cursor.rowcount > 0
 
 
+def delete_item(conn, item_id):
+    cursor = conn.execute("DELETE FROM pipeline_items WHERE id = ?", (item_id,))
+    conn.commit()
+    return cursor.rowcount > 0
+
+
+def update_item(conn, item_id, fields):
+    conn.execute(
+        """UPDATE pipeline_items SET
+               company = :company, channel = :channel, item = :item,
+               stage = :stage, next_action = :next_action, due_date = :due_date,
+               urgency = :urgency, last_touched = CURRENT_TIMESTAMP
+           WHERE id = :id""",
+        dict(fields, id=item_id),
+    )
+    conn.commit()
+
+
+def remove_company(conn, name):
+    conn.execute("DELETE FROM companies WHERE name = ?", (name,))
+    conn.commit()
+
+
+def get_setting(conn, key, default=None):
+    row = conn.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
+    return row["value"] if row else default
+
+
+def set_setting(conn, key, value):
+    conn.execute(
+        """INSERT INTO settings (key, value) VALUES (?, ?)
+           ON CONFLICT(key) DO UPDATE SET value = excluded.value""",
+        (key, value),
+    )
+    conn.commit()
+
+
 def get_weekly_stats(conn, days=7, stale_days=5):
     """Phase 3: aggregate counts only, per company - the input a weekly
     summary needs, and structured enough to hand to the Gemini path."""

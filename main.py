@@ -17,6 +17,7 @@ from db.database import (
     ensure_company,
     get_connection,
     get_last_uid,
+    get_setting,
     init_db,
     insert_pipeline_item,
     update_checkpoint,
@@ -43,7 +44,7 @@ def _store_items(conn, items, fallback_company, fallback_channel):
     return items
 
 
-def ingest_email_account(conn, account):
+def ingest_email_account(conn, account, persona):
     company, channel = account["company"], account["channel"]
     ensure_company(conn, company, account["account"])
 
@@ -53,12 +54,12 @@ def ingest_email_account(conn, account):
         return []
 
     print(f"Fetched {len(messages)} new message(s) from {account['account']}.")
-    items = router.classify(company, channel, messages)
+    items = router.classify(company, channel, messages, persona=persona)
     update_checkpoint(conn, channel, account["account"], str(max(int(m["id"]) for m in messages)))
     return _store_items(conn, items, company, channel)
 
 
-def ingest_whatsapp(conn):
+def ingest_whatsapp(conn, persona):
     """Read-only, reconnect -> fetch -> disconnect per cycle (handled inside
     connectors/whatsapp.py). A reconnect failure is surfaced via Telegram
     rather than failing silently."""
@@ -80,7 +81,7 @@ def ingest_whatsapp(conn):
     all_items = []
     for company, msgs in by_company.items():
         ensure_company(conn, company)
-        items = router.classify(company, "whatsapp", msgs)
+        items = router.classify(company, "whatsapp", msgs, persona=persona)
         all_items.extend(_store_items(conn, items, company, "whatsapp"))
 
     update_checkpoint(conn, "whatsapp", "whatsapp", str(max(m["timestamp_ms"] for m in messages)))
@@ -90,6 +91,7 @@ def ingest_whatsapp(conn):
 def run_cycle():
     init_db(DB_PATH)
     conn = get_connection(DB_PATH)
+    persona = get_setting(conn, "persona_instructions", "") or ""
 
     accounts = get_email_accounts()
     if not accounts:
@@ -97,10 +99,10 @@ def run_cycle():
 
     all_items = []
     for account in accounts:
-        all_items.extend(ingest_email_account(conn, account))
+        all_items.extend(ingest_email_account(conn, account, persona))
 
     if WHATSAPP_ENABLED:
-        all_items.extend(ingest_whatsapp(conn))
+        all_items.extend(ingest_whatsapp(conn, persona))
 
     if all_items:
         send_digest(all_items)
