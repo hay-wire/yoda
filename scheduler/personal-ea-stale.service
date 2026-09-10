@@ -1,0 +1,8 @@
+[Unit]
+Description=Personal EA - stale item check (Phase 3)
+
+[Service]
+Type=oneshot
+WorkingDirectory=/path/to/yoda
+EnvironmentFile=/path/to/yoda/.env
+ExecStart=/path/to/yoda/.venv/bin/python stale_check.py

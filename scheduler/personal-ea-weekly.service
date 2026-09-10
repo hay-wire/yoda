@@ -1,0 +1,8 @@
+[Unit]
+Description=Personal EA - weekly per-company summary (Phase 3)
+
+[Service]
+Type=oneshot
+WorkingDirectory=/path/to/yoda
+EnvironmentFile=/path/to/yoda/.env
+ExecStart=/path/to/yoda/.venv/bin/python weekly_summary.py

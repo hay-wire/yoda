@@ -1,0 +1,8 @@
+{
+  "name": "personal-ea-whatsapp",
+  "private": true,
+  "description": "Baileys sidecar for connectors/whatsapp_baileys.js - read-only WhatsApp ingestion.",
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.9"
+  }
+}

@@ -8,17 +8,29 @@ from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
 
-from db.database import get_connection, get_open_items, init_db, insert_pipeline_item, list_companies
+from brain.claude_agent import draft_reply
+from config import DB_PATH
+from db.database import (
+    get_connection,
+    get_item,
+    get_open_items,
+    init_db,
+    insert_pipeline_item,
+    list_companies,
+    mark_done,
+    snooze_item,
+)
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
 
-DB_PATH = os.environ.get("EA_DB_PATH", "ea.db")
-
 HELP_TEXT = (
     "Personal EA bot.\n\n"
     "add followup: <description> - track a new item\n"
-    "/status [company] - list open items, optionally filtered by company"
+    "/status [company] - list open items, optionally filtered by company\n"
+    "/done <item id> - mark an item done\n"
+    "/snooze <item id> <YYYY-MM-DD> - push out an item's due date\n"
+    "/draft <item id> - suggest a reply (never sent automatically)"
 )
 
 
@@ -39,8 +51,59 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     lines = []
     for item in items:
         due = f" (due {item['due_date']})" if item.get("due_date") else ""
-        lines.append(f"- [{item['company']}] {item['item']} - {item.get('stage') or 'new'}{due}")
+        lines.append(f"#{item['id']} [{item['company']}] {item['item']} - {item.get('stage') or 'new'}{due}")
     await update.message.reply_text("\n".join(lines))
+
+
+async def done(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    item_id = _parse_item_id(context.args)
+    if item_id is None:
+        await update.message.reply_text("Usage: /done <item id>")
+        return
+
+    conn = get_connection(DB_PATH)
+    ok = mark_done(conn, item_id)
+    conn.close()
+    await update.message.reply_text(f"Marked #{item_id} done." if ok else f"No item #{item_id}.")
+
+
+async def snooze(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if len(context.args) < 2:
+        await update.message.reply_text("Usage: /snooze <item id> <YYYY-MM-DD>")
+        return
+
+    item_id = _parse_item_id(context.args[:1])
+    if item_id is None:
+        await update.message.reply_text("Item id must be a number.")
+        return
+
+    new_due_date = context.args[1]
+    conn = get_connection(DB_PATH)
+    ok = snooze_item(conn, item_id, new_due_date)
+    conn.close()
+    await update.message.reply_text(f"Snoozed #{item_id} to {new_due_date}." if ok else f"No item #{item_id}.")
+
+
+async def draft(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    item_id = _parse_item_id(context.args)
+    if item_id is None:
+        await update.message.reply_text("Usage: /draft <item id>")
+        return
+
+    conn = get_connection(DB_PATH)
+    item = get_item(conn, item_id)
+    conn.close()
+    if not item:
+        await update.message.reply_text(f"No item #{item_id}.")
+        return
+
+    try:
+        text = draft_reply(item)
+    except Exception as exc:
+        await update.message.reply_text(f"Draft failed: {exc}")
+        return
+
+    await update.message.reply_text(f"Draft for #{item_id} (review before sending - not sent automatically):\n\n{text}")
 
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -84,6 +147,15 @@ def _match_company(conn, text):
     return None
 
 
+def _parse_item_id(args):
+    if not args:
+        return None
+    try:
+        return int(args[0])
+    except ValueError:
+        return None
+
+
 def main():
     init_db(DB_PATH)
     token = os.environ["TELEGRAM_BOT_TOKEN"]
@@ -92,6 +164,9 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", start))
     app.add_handler(CommandHandler("status", status))
+    app.add_handler(CommandHandler("done", done))
+    app.add_handler(CommandHandler("snooze", snooze))
+    app.add_handler(CommandHandler("draft", draft))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
     app.run_polling()
